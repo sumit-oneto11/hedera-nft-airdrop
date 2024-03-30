@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BladeConnector, ConnectorStrategy } from '@bladelabs/blade-web3.js';
 import { HederaNetwork } from '@bladelabs/blade-web3.js';
 import axios from 'axios';
@@ -10,8 +10,40 @@ const {
 
 const App = () => {
 
-  const [accountId, setAccountId] = useState(0);
-  const [signer, setSigner] = useState(String);
+  const [accountId, setAccountId] = useState("");
+  const [userNFT, setUserNFT] = useState({
+    id: "#",
+    name: "OneTo11 Champions",
+    image: "images/1.png"
+  });
+
+  const tokenId = "0.0.3856628";
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${accountId}/nfts`);
+        // const sortedData =response.filter((item, i) =>  item.tokenId === "27832783409854");
+        console.log("response", response.data.nfts);
+        const base64String = response.data.nfts[0].metadata;
+        const decodedString = atob(base64String);
+        console.log("decodedString", decodedString);
+
+        const ipfsResponse = await axios.get(decodedString);
+        console.log("ipfsResponse", ipfsResponse);
+
+        setUserNFT({
+          id: response.data.nfts[0].serial_number,
+          name: ipfsResponse.data.name,
+          image: ipfsResponse.data.image
+        });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    fetchData();
+  }, [accountId]); // Trigger the effect whenever accountId changes
 
 
   // Connect blade wallet
@@ -33,21 +65,18 @@ const App = () => {
     }
 
     const pairedAccountIds = await bladeConnector.createSession(params);
+    console.log("pairedAccountIds", pairedAccountIds);
     // retrieving the first available signer to perform all the Hedera operations
     const bladeSigner = await bladeConnector.getSigners()[0];
-    console.log("bladeSigner", bladeSigner);
-
-    const balances = bladeSigner.getAccountBalance();
-    console.log(balances);
-    balances.then(balances => {
-      console.log(balances); // Use the resolved value here
-    }).catch(error => {
-      console.error('Error fetching balances:', error); // Handle any errors
-    });
 
 
     if (pairedAccountIds.length) {
+      console.log(pairedAccountIds[0]);
       setAccountId(pairedAccountIds[0]);
+      // setTimeout(function(){
+      //   handleFetch();
+      // },2000)
+
     }
   }
 
@@ -55,8 +84,7 @@ const App = () => {
   /// claim your NFT 
   const claimNFT = () => {
 
-    if(accountId===0)
-    {
+    if (accountId === 0) {
       swal({ title: "Connect your wallet!", icon: "success", background: "#808080", timer: 2000 });
     }
 
@@ -86,6 +114,33 @@ const App = () => {
   }
 
 
+  const handleFetch = async () => {
+    try {
+      console.log("accountId", accountId);
+      const response = await axios.get(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${accountId}/nfts`)
+      console.log("response", response.data.nfts);
+
+      // const sortedData =response.filter((item, i) =>  item.tokenId === "27832783409854");
+      const base64String = response.data.nfts[0].metadata;
+      const decodedString = atob(base64String);
+      console.log("decodedString", decodedString);
+
+      const ipfsResponse = await axios.get(decodedString);
+      console.log("ipfsResponse", ipfsResponse);
+
+      setUserNFT({
+        id: response.data.nfts[0].serial_number,
+        name: ipfsResponse.data.name,
+        image: ipfsResponse.data.image
+      });
+
+    }
+    catch (error) {
+
+    }
+  }
+
+
   return (
     <>
       <div className="page_wrap">
@@ -107,10 +162,10 @@ const App = () => {
                 <div className="claim_dtls">
                   <div className="claim_head">
                     <div className="cl_rgt">
-                      <span>0</span>
+                      <span>{userNFT.id}</span>
                       <div className="cl_nme">
-                        <h4>Parcel Zer0</h4>
-                        <p>70 HAIL BASIN RD, POWELL, WYOMING</p>
+                        <h4>{userNFT.name}</h4>
+                        {/* <p>70 HAIL BASIN RD, POWELL, WYOMING</p> */}
 
                       </div>
 
@@ -120,7 +175,7 @@ const App = () => {
                     </div> */}
                   </div>
                   <div className="clam_b">
-                    <img src="images/1.png" alt="" />
+                    <img src={userNFT.image} alt="" />
                   </div>
                 </div>
               </div>
